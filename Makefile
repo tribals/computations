@@ -26,5 +26,5 @@ test:
 	$(EXEC) $(TEST)
 
 
-.PHONY: all
-all: format lint test
+.PHONY: check
+check: format lint test

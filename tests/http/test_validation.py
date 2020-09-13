@@ -1,5 +1,5 @@
 import inspect
-from unittest.mock import Mock, call, patch, sentinel
+from unittest.mock import Mock, call, sentinel
 
 import falcon
 import pytest
@@ -10,7 +10,7 @@ from computations.http.validation import jsonschema_validate
 _DOESNT_MATTER = object()
 
 
-def test_jsonschema_validate_implements_descriptor_protocol():
+def test_jsonschema_validate_implements_descriptor_protocol(mocker):
     Resource = Mock()
 
     decorator = jsonschema_validate(_DOESNT_MATTER)
@@ -30,40 +30,42 @@ def test_jsonschema_validate_implements_descriptor_protocol():
 
     req = Mock()
 
-    with patch('computations.http.validation.validators'):
-        with patch('computations.http.validation._is_json'):
-            decorated_handler(req, sentinel.resp)
+    mocker.patch('computations.http.validation.validators')
+    mocker.patch('computations.http.validation._is_json')
+
+    decorated_handler(req, sentinel.resp)
 
     # calls decorated method when called
     assert Resource.method.called
     assert Resource.method.call_args == call(Resource(), req, sentinel.resp)
 
 
-def test_jsonschema_validate_validates_request_body_using_given_schema():
+def test_jsonschema_validate_validates_request_body_using_given_schema(mocker):
     decorator = jsonschema_validate(sentinel.schema)(Mock())
     decorated_handler = decorator.__get__(_DOESNT_MATTER, type(_DOESNT_MATTER))
 
     req = Mock()
 
-    with patch('computations.http.validation.validators') as validators:
-        with patch('computations.http.validation._is_json') as _is_json:
-            decorated_handler(req, sentinel.resp)
+    validators_mock = mocker.patch('computations.http.validation.validators')
+    _is_json_mock = mocker.patch('computations.http.validation._is_json')
+
+    decorated_handler(req, sentinel.resp)
 
     # gets validator class for schema
-    assert validators.validator_for.called
-    assert validators.validator_for.call_args == call(sentinel.schema)
+    assert validators_mock.validator_for.called
+    assert validators_mock.validator_for.call_args == call(sentinel.schema)
 
     # creates validator
-    assert validators.validator_for().called
-    assert validators.validator_for().call_args == call(
+    assert validators_mock.validator_for().called
+    assert validators_mock.validator_for().call_args == call(
         sentinel.schema, format_checker=draft7_format_checker
     )
 
     # validates request content type and body
-    assert _is_json.called
-    assert _is_json.call_args == call(req.content_type)
-    assert validators.validator_for()().is_valid.called
-    assert validators.validator_for()().is_valid.call_args == call(req.media)
+    assert _is_json_mock.called
+    assert _is_json_mock.call_args == call(req.content_type)
+    assert validators_mock.validator_for()().is_valid.called
+    assert validators_mock.validator_for()().is_valid.call_args == call(req.media)
 
 
 def test_jsonschema_validate_raises_http_unsupported_media_type_when_request_isnt_of_type_json():

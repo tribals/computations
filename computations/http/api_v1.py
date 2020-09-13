@@ -6,9 +6,8 @@ import falcon
 # from computations.configuration import EnvConfig
 from computations.http import schemas
 from computations.http.validation import jsonschema_validate
-from computations.persistence import ComputationsRepository, TasksRepository
+from computations.persistence import ComputationsRepository
 from computations.services import ComputationsService
-from computations.worker import TasksScheduler
 
 
 class Dummy:
@@ -22,11 +21,8 @@ def create_api():
 
     # engine = create_engine(config.DATABASE_URI)
     computations_repository = ComputationsRepository()
-    tasks_repository = TasksRepository()
 
-    tasks_scheduler = TasksScheduler(tasks_repository)
-
-    computations_service = ComputationsService(Dummy(), computations_repository, tasks_scheduler)
+    computations_service = ComputationsService(Dummy(), computations_repository)
 
     api = falcon.API()
     api.add_route('/api/v1/computations', ComputationsResource(computations_service))

@@ -1,6 +1,9 @@
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import Column, ForeignKey, MetaData, Table
+from sqlalchemy.sql import select
 from sqlalchemy.types import BigInteger, Enum
+
+from computations.models import Computation, Task
 
 metadata = MetaData()
 
@@ -14,6 +17,7 @@ table_computations = Table(
         nullable=False,
     ),
     Column('args', postgresql.JSONB, default=dict),
+    Column('result', postgresql.JSONB, default=dict),
 )
 
 table_tasks = Table(
@@ -42,15 +46,43 @@ class ComputationsRepository(object):
             table_computations.insert().values(type=computation.type_.name, args=computation.args)
         )
 
-        return result.inserted_primary_key
+        computation.id = result.inserted_primary_key[0]  # TODO
 
-
-class TasksRepository(object):
-    def add(self, connection, task):
         result = connection.execute(
             table_tasks.insert().values(
-                status=task.status.name, computation_id=task.computation_id
+                status=computation.task.status.name, computation_id=computation.id
             )
         )
 
-        return result.inserted_primary_key
+        computation.task.id = result.inserted_primary_key[0]  # TODO
+
+    def query_by_task_id(self, connection, task_id):
+        result = connection.execute(
+            select([table_computations, table_tasks])
+            .select_from(table_computations.join(table_tasks))
+            .where(table_tasks.c.id == task_id)
+        )
+
+        return _deserialize(result.first())
+
+    def persist(self, connection, computation):
+        connection.execute(
+            table_tasks.update()
+            .values(status=computation.task.status)
+            .where(table_tasks.c.id == computation.task.id)
+        )
+        connection.execute(
+            table_computations.update()
+            .values(result=computation.result)
+            .where(table_computations.c.id == computation.id)
+        )
+
+
+def _deserialize(row):
+    return Computation.reconstitute(
+        row[table_computations.c.type],
+        row[table_computations.c.args],
+        Task.reconstitute(row[table_tasks.c.status], row[table_tasks.c.id]),
+        row[table_computations.c.id],
+        row[table_computations.c.result],
+    )

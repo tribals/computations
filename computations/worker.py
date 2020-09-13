@@ -1,9 +1,18 @@
-class TasksScheduler(object):
-    def __init__(self, tasks_repository):
-        self._tasks_repository = tasks_repository
+from celery import Celery
+from sqlalchemy.engine import create_engine
 
-    def enqueue(self, connection, computation_id):
-        return 42
-        # task = Task(computation_id)
+from computations.configuration import EnvConfig
+from computations.persistence import ComputationsRepository
+from computations.services import ComputationsService
 
-        # task_id = self._tasks_repository.add(task)
+app = Celery('computations.worker')
+
+
+@app.task
+def perform_task(task_id):
+    config = EnvConfig()
+    engine = create_engine(config.DATABASE_URI)
+    computations_repository = ComputationsRepository()
+
+    computations_service = ComputationsService(engine, computations_repository)
+    computations_service.compute_by_task_id(task_id)
