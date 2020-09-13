@@ -7,7 +7,7 @@ from computations.services import ComputationsService
 
 config = EnvConfig()
 
-app = Celery('computations.worker')
+app = Celery('worker')
 app.conf.update(
     broker_url=config.QUEUE_URI,
 )

@@ -70,13 +70,22 @@ class ComputationsRepository(object):
             .where(table_tasks.c.id == task_id)
         )
 
-        return _deserialize(result.first())
+        return _deserialize(result.one())
+
+    def query_by_id(self, connection, computation_id):
+        result = connection.execute(
+            select([table_computations, table_tasks])
+            .select_from(table_computations.join(table_tasks))
+            .where(table_computations.c.id == computation_id)
+        )
+
+        return _deserialize(result.one())
 
     def persist(self, connection, computation):
         connection.execute(
             table_tasks.update()
             .values(
-                status=computation.task.status,
+                status=computation.task.status.name,
                 started_at=computation.task.started_at,
                 completed_at=computation.task.completed_at,
             )

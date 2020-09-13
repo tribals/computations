@@ -37,7 +37,7 @@ def test_computations_repository_query_by_task_id(mocker):
     repository = ComputationsRepository()
 
     connection = Mock(spec=Connection)
-    connection.execute.return_value.first.return_value = MagicMock(spec=Row)
+    connection.execute.return_value.one.return_value = MagicMock(spec=Row)
 
     task_id = 42
 
@@ -55,9 +55,9 @@ def test_computations_repository_query_by_task_id(mocker):
         .select_from(table_computations.join(table_tasks))
         .where(table_tasks.c.id == task_id)
     )
-    assert connection.execute().first.called
+    assert connection.execute().one.called
 
-    row = connection.execute().first()
+    row = connection.execute().one()
 
     assert TaskMock.reconstitute.called
     assert TaskMock.reconstitute.call_args == call(
@@ -100,7 +100,7 @@ def test_computations_repository_persist():
     assert first_call_args[0].compare(
         table_tasks.update()
         .values(
-            status=computation.task.status,
+            status=computation.task.status.name,
             started_at=computation.task.started_at,
             completed_at=computation.task.completed_at,
         )

@@ -1,5 +1,6 @@
 import re
-from contextlib import contextmanager
+import time
+from datetime import timedelta
 from http import HTTPStatus
 from unittest.mock import Mock, call
 from urllib.parse import urlparse
@@ -16,22 +17,7 @@ from computations.services import ComputationsService
 
 
 @pytest.fixture
-def client(transactional_connection, mocker):
-    # HACK: **VERY** dirty
-    class DummyEngine(object):
-        @contextmanager
-        def begin(self):
-            yield transactional_connection
-
-        @contextmanager
-        def connect(self):
-            yield transactional_connection
-
-    mocker.patch(
-        'computations.http.api_v1.create_engine',
-        return_value=DummyEngine(),
-    )
-
+def client():
     return Client(create_api())
 
 
@@ -48,14 +34,59 @@ def test_v1_computations(client):
 
     assert re.search(r'/api/v1/tasks/\d+', task_uri)
 
-    response = client.simulate_get(task_uri)
+    response, prev_response = _poll_until_status(
+        client.simulate_get, task_uri, HTTPStatus.SEE_OTHER, timedelta(seconds=10)
+    )
+
+    assert response.status_code == HTTPStatus.SEE_OTHER
+    assert re.search(r'/api/v1/computations/\d+', _uri_path(response.headers['location']))
+
+    assert prev_response.status_code == HTTPStatus.OK
+    create_validator(schemas.get_v1_tasks_id_response).validate(prev_response.json)
+
+    response = client.simulate_get(_uri_path(response.headers['location']))
 
     assert response.status_code == HTTPStatus.OK
-    create_validator(schemas.get_v1_tasks_id_response).validate(response.json)
+    create_validator(schemas.get_v1_computations_id_response).validate(response.json)
 
 
 def _uri_path(uri):
     return urlparse(uri).path
+
+
+def _poll_until_status(requester, uri, status, timeout, delay=timedelta(seconds=0.1)):
+    elapsed = timedelta()
+
+    def _retry():
+        prev_response = None
+
+        while True:
+            response = requester(uri)
+
+            if response.status_code == status:
+                return response, prev_response
+
+            _wait()
+
+            if _is_timeout_expired():
+                raise TimeoutError(response, elapsed)
+
+            prev_response = response
+
+    def _wait():
+        nonlocal elapsed
+
+        time.sleep(delay.total_seconds())
+        elapsed += delay
+
+    def _is_timeout_expired():
+        return elapsed >= timeout
+
+    return _retry()
+
+
+class TimeoutError(Exception):
+    pass
 
 
 def test_v1_computations_validates_request_body():

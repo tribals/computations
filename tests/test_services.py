@@ -19,7 +19,7 @@ def test_computations_service_queues_computation(mocker):
     args = dict(number='+70003232357747326478176437462')
 
     ComputationMock = mocker.patch('computations.services.Computation', spec=Computation)
-    celery_mock = mocker.patch('computations.services.celery')
+    perform_task_mock = mocker.patch('computations.worker.perform_task')
 
     queued_task_id = service.enqueue_computation(type_=type_, args=args)
 
@@ -34,10 +34,8 @@ def test_computations_service_queues_computation(mocker):
     assert computations_repository.add.called
     assert computations_repository.add.call_args == call(connection, ComputationMock.create())
 
-    assert celery_mock.current_app.send_task.called
-    assert celery_mock.current_app.send_task.call_args == call(
-        'computations.worker.perform_task', (ComputationMock.create().task.id,)
-    )
+    assert perform_task_mock.delay.called
+    assert perform_task_mock.delay.call_args == call(ComputationMock.create().task.id)
 
     assert queued_task_id == ComputationMock.create().task.id
 
@@ -67,6 +65,7 @@ def test_computations_service_actually_performs_computation():
 
     assert computation.task_started.called
     assert computation.compute.called
+    assert computation.task_completed.called
 
     assert engine.begin.called
     assert engine.begin.call_count == 2

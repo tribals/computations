@@ -28,4 +28,14 @@ celerybeat.pid
 .envrc
 env.local
 
+# Make
+.format
+.lint
+.test
+.test-full
+.check
+.check-full
+.docker-compose-*
+.setup-*
+
 # End of https://www.toptal.com/developers/gitignore/api/python

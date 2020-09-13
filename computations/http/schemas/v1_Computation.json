@@ -1,0 +1,57 @@
+{
+  "Computation": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "SQRT"
+        ]
+      },
+      "created_at": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "computed_at": {
+        "type": ["string", "null"],
+        "format": "date-time"
+      },
+      "args": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string",
+            "pattern": "^\\+\\d{1,29}$"
+          }
+        },
+        "required": [
+          "number"
+        ]
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "number"
+        ]
+      },
+      "task": { "$ref": "v1_Task.json#/Task" }
+    },
+    "required": [
+      "id",
+      "type",
+      "created_at",
+      "computed_at",
+      "args",
+      "result"
+    ]
+  }
+}

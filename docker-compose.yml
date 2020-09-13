@@ -1,14 +1,40 @@
 version: '3.7'
 
 services:
+
+  api:
+    build: .
+    image: computations/app:latest
+    command: api
+    env_file: ./env.staging
+    ports:
+      - 8080:8080
+    depends_on:
+      - postgres
+      - rabbitmq
+
+  worker-machine1:
+    image: computations/app:latest
+    command: worker --concurrency 2
+    env_file: ./env.staging
+    depends_on:
+      - postgres
+      - rabbitmq
+
+  worker-machine2:
+    image: computations/app:latest
+    command: worker --concurrency 2
+    env_file: ./env.staging
+    depends_on:
+      - postgres
+      - rabbitmq
+
   postgres:
     build:
       context: ./dockerfiles/postgres
     image: computations/postgres:12.4-alpine
     ports:
       - 5432:5432
-    # volumes:
-    #   - computations-postgres-data:/var/lib/postgresql/data
 
   rabbitmq:
     build:
@@ -21,12 +47,3 @@ services:
       - 15671-15672:15671-15672
       - 15691-15692:15691-15692
       - 25672:25672
-    # volumes:
-    #   - computations-rabbitmq-data:/var/lib/rabbitmq
-
-
-# volumes:
-#   computations-postgres-data:
-#     external: true
-#   computations-rabbitmq-data:
-#     external: true

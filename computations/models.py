@@ -1,4 +1,10 @@
 import enum
+from datetime import datetime
+from decimal import Context
+from decimal import Decimal as D
+from decimal import localcontext
+
+_REASONABLE_PRECISION = 1015  # NOTE: min. ~1000 decimal places
 
 
 class Computation(object):
@@ -14,10 +20,21 @@ class Computation(object):
         self._computed_at = computed_at
 
     def task_started(self):
-        pass
+        self._task.has_been_started()
+
+    def task_completed(self):
+        self._task.has_been_completed()
 
     def compute(self):
-        pass
+        if self._type is ComputationTypes.SQRT:
+            self._result = SquareRootStrategy(**self._args).compute()
+        else:
+            raise TypeError('unknown computation type')
+
+        self._has_been_computed()
+
+    def _has_been_computed(self):
+        self._computed_at = datetime.utcnow()
 
     @property
     def type_(self):
@@ -64,6 +81,15 @@ class ComputationTypes(enum.Enum):
     SQRT = 'SQRT'
 
 
+class SquareRootStrategy(object):
+    def __init__(self, *, number):
+        self._number = D(number)
+
+    def compute(self):
+        with localcontext(Context(prec=_REASONABLE_PRECISION)):
+            return dict(number=str(self._number.sqrt()))
+
+
 class Task(object):
     def __init__(self, status, id_=None, queued_at=None, started_at=None, completed_at=None):
         self._status = status
@@ -76,8 +102,22 @@ class Task(object):
     def status(self):
         return self._status
 
+    def is_queued(self):
+        return self._status is TaskStatuses.QUEUED
+
+    def is_started(self):
+        return self._status is TaskStatuses.STARTED
+
     def is_completed(self):
         return self._status is TaskStatuses.COMPLETED
+
+    def has_been_started(self):
+        self._status = TaskStatuses.STARTED
+        self._started_at = datetime.utcnow()
+
+    def has_been_completed(self):
+        self._status = TaskStatuses.COMPLETED
+        self._completed_at = datetime.utcnow()
 
     @property
     def id(self):

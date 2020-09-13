@@ -1,5 +1,3 @@
-import celery
-
 from computations.models import Computation
 
 
@@ -14,9 +12,9 @@ class ComputationsService(object):
         with self._engine.begin() as conn:
             self._computations_repository.add(conn, computation)
 
-            celery.current_app.send_task(
-                'computations.worker.perform_task', (computation.task.id,)
-            )
+        from computations.worker import perform_task  # HACK
+
+        perform_task.delay(computation.task.id)
 
         return computation.task.id
 
@@ -30,6 +28,7 @@ class ComputationsService(object):
             self._computations_repository.persist(conn, computation)
 
         computation.compute()
+        computation.task_completed()
 
         with self._engine.begin() as conn:
             self._computations_repository.persist(conn, computation)
@@ -37,3 +36,7 @@ class ComputationsService(object):
     def get_computation_by_task_id(self, task_id):
         with self._engine.connect() as conn:
             return self._computations_repository.query_by_task_id(conn, task_id)
+
+    def get_computation_by_id(self, computation_id):
+        with self._engine.connect() as conn:
+            return self._computations_repository.query_by_id(conn, computation_id)

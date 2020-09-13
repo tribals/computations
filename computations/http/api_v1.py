@@ -18,6 +18,9 @@ def create_api():
 
     api = falcon.API()
     api.add_route('/api/v1/computations', ComputationsResource(computations_service))
+    api.add_route(
+        '/api/v1/computations/{computation_id:int}', ComputationResource(computations_service)
+    )
     api.add_route('/api/v1/tasks/{task_id:int}', TaskResource(computations_service))
 
     return api
@@ -39,6 +42,25 @@ class ComputationsResource(object):
         resp.location = f'/api/v1/tasks/{queued_task_id}'  # TODO: reverse URI
 
 
+class ComputationResource(object):
+    def __init__(self, service):
+        self._service = service
+
+    def on_get(self, req, resp, computation_id):
+        computation = self._service.get_computation_by_id(computation_id)
+        resp.media = dict(
+            computation=dict(
+                id=computation.id,
+                type=computation.type_.name,
+                created_at=_serialize_dt(computation.created_at),
+                computed_at=_serialize_dt(computation.computed_at),
+                args=computation.args,
+                result=computation.result,
+                task=_serialize_task(computation.task),
+            )
+        )
+
+
 class TaskResource(object):
     def __init__(self, service):
         self._service = service
@@ -50,15 +72,17 @@ class TaskResource(object):
             resp.status = falcon.HTTP_SEE_OTHER
             resp.location = f'/api/v1/computations/{computation.id}'
         else:
-            resp.media = dict(
-                task=dict(
-                    id=computation.task.id,
-                    status=computation.task.status.name,
-                    queued_at=_serialize_dt(computation.task.queued_at),
-                    started_at=_serialize_dt(computation.task.started_at),
-                    completed_at=_serialize_dt(computation.task.completed_at),
-                )
-            )
+            resp.media = dict(task=_serialize_task(computation.task))
+
+
+def _serialize_task(task):
+    return dict(
+        id=task.id,
+        status=task.status.name,
+        queued_at=_serialize_dt(task.queued_at),
+        started_at=_serialize_dt(task.started_at),
+        completed_at=_serialize_dt(task.completed_at),
+    )
 
 
 def _serialize_dt(dt):
