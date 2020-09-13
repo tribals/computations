@@ -1,4 +1,4 @@
-SOURCES = computations tests
+SOURCES = computations tests migrations
 
 EXEC = poetry run
 
@@ -28,3 +28,11 @@ test:
 
 .PHONY: check
 check: format lint test
+
+
+.PHONY: setup-rabbitmq
+setup-rabbitmq:
+	docker-compose exec rabbitmq sh -c 'set -ex; \
+rabbitmqctl add_vhost computations; \
+rabbitmqctl add_user computations sesame; \
+rabbitmqctl set_permissions --vhost computations computations ".*" ".*" ".*"'

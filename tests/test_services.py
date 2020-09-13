@@ -34,9 +34,9 @@ def test_computations_service_queues_computation(mocker):
     assert computations_repository.add.called
     assert computations_repository.add.call_args == call(connection, ComputationMock.create())
 
-    assert celery_mock.send_task.called
-    assert celery_mock.send_task.call_args == call(
-        'computations.worker.perform_task', ComputationMock.create().task.id
+    assert celery_mock.current_app.send_task.called
+    assert celery_mock.current_app.send_task.call_args == call(
+        'computations.worker.perform_task', (ComputationMock.create().task.id,)
     )
 
     assert queued_task_id == ComputationMock.create().task.id
@@ -80,3 +80,25 @@ def test_computations_service_actually_performs_computation():
         call(connection1, computation),
         call(connection1, computation),
     ]
+
+
+def test_computations_service_gets_computation_by_task_id():
+    engine = Mock(spec=Engine)
+    engine.connect.return_value = MagicMock(spec=Connection)
+    computations_repository = Mock(spec=ComputationsRepository)
+
+    service = ComputationsService(engine, computations_repository)
+
+    task_id = 42
+
+    computation = service.get_computation_by_task_id(task_id)
+
+    assert engine.connect.called
+    assert engine.connect().__enter__.called
+
+    connection = engine.connect().__enter__()
+
+    assert computations_repository.query_by_task_id.called
+    assert computations_repository.query_by_task_id.call_args == call(connection, task_id)
+
+    assert computation == computations_repository.query_by_task_id()

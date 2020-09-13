@@ -1,0 +1,32 @@
+version: '3.7'
+
+services:
+  postgres:
+    build:
+      context: ./dockerfiles/postgres
+    image: computations/postgres:12.4-alpine
+    ports:
+      - 5432:5432
+    # volumes:
+    #   - computations-postgres-data:/var/lib/postgresql/data
+
+  rabbitmq:
+    build:
+      context: ./dockerfiles/rabbitmq
+    image: computations/rabbitmq:3.8-management-alpine
+    hostname: rabbitmq
+    ports:
+      - 4369:4369
+      - 5671-5672:5671-5672
+      - 15671-15672:15671-15672
+      - 15691-15692:15691-15692
+      - 25672:25672
+    # volumes:
+    #   - computations-rabbitmq-data:/var/lib/rabbitmq
+
+
+# volumes:
+#   computations-postgres-data:
+#     external: true
+#   computations-rabbitmq-data:
+#     external: true

@@ -61,7 +61,11 @@ def test_computations_repository_query_by_task_id(mocker):
 
     assert TaskMock.reconstitute.called
     assert TaskMock.reconstitute.call_args == call(
-        row[table_tasks.c.status], row[table_tasks.c.id]
+        row[table_tasks.c.status],
+        row[table_tasks.c.id],
+        row[table_tasks.c.queued_at],
+        row[table_tasks.c.started_at],
+        row[table_tasks.c.completed_at],
     )
 
     assert ComputationMock.reconstitute.called
@@ -71,6 +75,8 @@ def test_computations_repository_query_by_task_id(mocker):
         TaskMock.reconstitute(),
         row[table_computations.c.id],
         row[table_computations.c.result],
+        row[table_computations.c.created_at],
+        row[table_computations.c.computed_at],
     )
 
 
@@ -93,11 +99,15 @@ def test_computations_repository_persist():
 
     assert first_call_args[0].compare(
         table_tasks.update()
-        .values(status=computation.task.status)
+        .values(
+            status=computation.task.status,
+            started_at=computation.task.started_at,
+            completed_at=computation.task.completed_at,
+        )
         .where(table_tasks.c.id == computation.task.id)
     )
     assert second_call_args[0].compare(
         table_computations.update()
-        .values(result=computation.result)
+        .values(result=computation.result, computed_at=computation.computed_at)
         .where(table_computations.c.id == computation.id)
     )

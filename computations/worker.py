@@ -5,12 +5,16 @@ from computations.configuration import EnvConfig
 from computations.persistence import ComputationsRepository
 from computations.services import ComputationsService
 
+config = EnvConfig()
+
 app = Celery('computations.worker')
+app.conf.update(
+    broker_url=config.QUEUE_URI,
+)
 
 
 @app.task
 def perform_task(task_id):
-    config = EnvConfig()
     engine = create_engine(config.DATABASE_URI)
     computations_repository = ComputationsRepository()
 

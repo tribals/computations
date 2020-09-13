@@ -9,7 +9,7 @@ def __init__(mod):
             schema = json.load(f)
 
         with resources.path(mod, res) as res_path:
-            schema['id'] = f'file://{res_path}'
+            schema['$id'] = f'file://{res_path}'
 
             setattr(mod, res_path.stem, schema)
 

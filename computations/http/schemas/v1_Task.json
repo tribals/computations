@@ -1,0 +1,38 @@
+{
+  "Task": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "QUEUED",
+          "STARTED",
+          "COMPLETED"
+        ]
+      },
+      "queued_at": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "started_at": {
+        "type": ["string", "null"],
+        "format": "date-time"
+      },
+      "completed_at": {
+        "type": ["string", "null"],
+        "format": "date-time"
+      }
+    },
+    "required": [
+      "id",
+      "status",
+      "queued_at",
+      "started_at",
+      "completed_at"
+    ]
+  }
+}

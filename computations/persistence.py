@@ -1,7 +1,9 @@
+from datetime import datetime
+
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import Column, ForeignKey, MetaData, Table
 from sqlalchemy.sql import select
-from sqlalchemy.types import BigInteger, Enum
+from sqlalchemy.types import BigInteger, DateTime, Enum
 
 from computations.models import Computation, Task
 
@@ -11,6 +13,8 @@ table_computations = Table(
     'computations',
     metadata,
     Column('id', BigInteger, primary_key=True),
+    Column('created_at', DateTime, default=datetime.utcnow),
+    Column('computed_at', DateTime),
     Column(
         'type',
         Enum('SQRT', create_constraint=True, name='computationtypes', native_enum=False),
@@ -24,6 +28,9 @@ table_tasks = Table(
     'tasks',
     metadata,
     Column('id', BigInteger, primary_key=True),
+    Column('queued_at', DateTime, default=datetime.utcnow),
+    Column('started_at', DateTime),
+    Column('completed_at', DateTime),
     Column(
         'status',
         Enum(
@@ -68,12 +75,19 @@ class ComputationsRepository(object):
     def persist(self, connection, computation):
         connection.execute(
             table_tasks.update()
-            .values(status=computation.task.status)
+            .values(
+                status=computation.task.status,
+                started_at=computation.task.started_at,
+                completed_at=computation.task.completed_at,
+            )
             .where(table_tasks.c.id == computation.task.id)
         )
         connection.execute(
             table_computations.update()
-            .values(result=computation.result)
+            .values(
+                result=computation.result,
+                computed_at=computation.computed_at,
+            )
             .where(table_computations.c.id == computation.id)
         )
 
@@ -82,7 +96,15 @@ def _deserialize(row):
     return Computation.reconstitute(
         row[table_computations.c.type],
         row[table_computations.c.args],
-        Task.reconstitute(row[table_tasks.c.status], row[table_tasks.c.id]),
+        Task.reconstitute(
+            row[table_tasks.c.status],
+            row[table_tasks.c.id],
+            row[table_tasks.c.queued_at],
+            row[table_tasks.c.started_at],
+            row[table_tasks.c.completed_at],
+        ),
         row[table_computations.c.id],
         row[table_computations.c.result],
+        row[table_computations.c.created_at],
+        row[table_computations.c.computed_at],
     )

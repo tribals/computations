@@ -1,4 +1,5 @@
 import re
+from contextlib import contextmanager
 from http import HTTPStatus
 from unittest.mock import Mock, call
 from urllib.parse import urlparse
@@ -10,15 +11,31 @@ from werkzeug.test import EnvironBuilder
 
 from computations.http import schemas
 from computations.http.api_v1 import ComputationsResource, create_api
-from computations.http.validation import jsonschema_validate
+from computations.http.validation import create_validator, jsonschema_validate
 from computations.services import ComputationsService
 
 
 @pytest.fixture
-def client():
+def client(transactional_connection, mocker):
+    # HACK: **VERY** dirty
+    class DummyEngine(object):
+        @contextmanager
+        def begin(self):
+            yield transactional_connection
+
+        @contextmanager
+        def connect(self):
+            yield transactional_connection
+
+    mocker.patch(
+        'computations.http.api_v1.create_engine',
+        return_value=DummyEngine(),
+    )
+
     return Client(create_api())
 
 
+@pytest.mark.integration
 def test_v1_computations(client):
     payload = dict(
         computation=dict(type='SQRT', args=dict(number='+70003232357747326478176437462'))
@@ -26,7 +43,15 @@ def test_v1_computations(client):
     response = client.simulate_post('/api/v1/computations', json=payload)
 
     assert response.status_code == HTTPStatus.ACCEPTED
-    assert re.search(r'/api/v1/tasks/\d+', _uri_path(response.headers['location']))
+
+    task_uri = _uri_path(response.headers['location'])
+
+    assert re.search(r'/api/v1/tasks/\d+', task_uri)
+
+    response = client.simulate_get(task_uri)
+
+    assert response.status_code == HTTPStatus.OK
+    create_validator(schemas.get_v1_tasks_id_response).validate(response.json)
 
 
 def _uri_path(uri):
@@ -35,7 +60,7 @@ def _uri_path(uri):
 
 def test_v1_computations_validates_request_body():
     assert isinstance(ComputationsResource.on_post, jsonschema_validate)
-    assert ComputationsResource.on_post.schema is schemas.v1_post_computations_request
+    assert ComputationsResource.on_post.schema is schemas.post_v1_computations_request
 
 
 def test_v1_computations_delegates_actual_processing_to_service():

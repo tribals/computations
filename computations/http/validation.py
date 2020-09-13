@@ -39,9 +39,7 @@ class jsonschema_validate(object):
 
     @cached_property
     def _validator(self):
-        Validator = validators.validator_for(self._schema)
-
-        return Validator(self._schema, format_checker=draft7_format_checker)
+        return create_validator(self._schema)
 
     @property
     def schema(self):
@@ -50,3 +48,9 @@ class jsonschema_validate(object):
 
 def _is_json(content_type):
     return content_type is not None and content_type == falcon.MEDIA_JSON
+
+
+def create_validator(schema):
+    Validator = validators.validator_for(schema)
+
+    return Validator(schema, format_checker=draft7_format_checker)
