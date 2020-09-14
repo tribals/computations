@@ -77,13 +77,13 @@ clean:
 	@touch .lint
 
 
-.test: $(sources_py) .pytest_cache
+.test: $(sources_py)
 	$(packager) run $(test) -m 'not integration'
 
 	@touch .test
 
 
-.test-full: $(sources_py) .pytest_cache
+.test-full: $(sources_py)
 	$(packager) run $(test)
 
 	@touch .test-full
