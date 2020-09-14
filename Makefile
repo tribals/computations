@@ -83,7 +83,7 @@ clean:
 	@touch .test
 
 
-.test-full: $(sources_py) .pytest_cache .setup-db .setup-rabbitmq .docker-compose-up-one-werker
+.test-full: $(sources_py) .pytest_cache
 	$(packager) run $(test)
 
 	@touch .test-full
@@ -103,38 +103,34 @@ clean:
 	@touch .docker-compose-build
 
 
-.docker-compose-up-deps: .docker-compose-build
+.PHONY: docker-compose-up-deps
+docker-compose-up-deps:
 	docker-compose up --detach postgres rabbitmq
 
-	@touch .docker-compose-up-deps
 
-
-.docker-compose-up-one-werker: .docker-compose-up-deps
+.PHONY: docker-compose-up-one-worker
+docker-compose-up-one-worker:
 	docker-compose up --detach worker-machine1
 
-	@touch .docker-compose-up-one-werker
 
-
-.setup-db: .docker-compose-up-deps
+.PHONY: setup-db
+setup-db:
 	docker-compose run api migrations upgrade head
 
-	@touch .setup-db
 
-
-.setup-rabbitmq: .docker-compose-up-deps
+.PHONY: setup-rabbitmq
+setup-rabbitmq:
 	docker-compose exec rabbitmq sh -c 'set -ex; \
 rabbitmqctl add_vhost computations; \
 rabbitmqctl add_user computations sesame; \
 rabbitmqctl set_permissions --vhost computations computations ".*" ".*" ".*"'
 
-	@touch .setup-rabbitmq
 
-.docker-compose-up: .docker-compose-up-deps .setup-db .setup-rabbitmq
-	docker-compose up --detach api worker-machine1 worker-machine2
+.PHONY: docker-compose-up
+docker-compose-up:
+	docker-compose up --detach
 
-	@touch .docker-compose-up
 
 .PHONY: docker-compose-down
 docker-compose-down:
 	docker-compose down --volumes
-	rm .docker-compose-* .setup-*
